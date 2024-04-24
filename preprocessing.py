@@ -1,6 +1,7 @@
 import csv
 import json
 import regex as re
+import os
 
 
 FLAGS = re.MULTILINE | re.DOTALL
@@ -72,9 +73,17 @@ def tweet_preprocessing(text):
 
     return text.lower()
 
+def image_is_with_text(id_image, list_img_txt_path):
+    if id_image in list_img_txt_path:
+        return True
+    else:
+        return False
+
+
 # === EXTERNAL FUNCTIONS ============================================================================================================
 
-def create_csv_labels(json_file, csv_file):
+def create_csv_labels(json_file, csv_file, img_txt_path):
+    cmpt = 0
     with open(json_file, 'r') as file:
         data = json.load(file)
 
@@ -83,11 +92,22 @@ def create_csv_labels(json_file, csv_file):
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
+        list_img_txt_path = os.listdir(img_txt_path)
+        # get rid of .json
+        list_img_txt_path = [filename[:-5] for filename in list_img_txt_path]
+
         # Iterate over each user ID in the JSON file
         for user_id, user_data in data.items():
-            labels = user_data.get('labels', [])
-            text = user_data.get('tweet_text', [])
-            text = tweet_preprocessing(text=text)
-            hateful_label = hateful_or_not(labels)
-            # Write data to CSV file
-            writer.writerow({'user_id': user_id, 'labels': labels, 'hateful_label': hateful_label, 'text': text})
+            if image_is_with_text(user_id, list_img_txt_path):
+                labels = user_data.get('labels', [])
+                text = user_data.get('tweet_text', [])
+                text = tweet_preprocessing(text=text)
+                hateful_label = hateful_or_not(labels)
+                # Write data to CSV file
+                writer.writerow({'user_id': user_id, 'labels': labels, 'hateful_label': hateful_label, 'text': text})
+                cmpt += 1
+                # print(cmpt)
+            else:
+                continue
+
+    print(f"Number of images with text: {cmpt}")
