@@ -16,6 +16,7 @@ class CustomDataset(Dataset):
         self.transform = transform
 
         self.GT_data = pd.read_csv(GT_path)
+        self.ids_labels = [self.GT_data.iloc[:, 0].values, self.GT_data.iloc[:, 2].values]
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         self.max_len = 256 # max length of the text (arbitrary)
 
@@ -27,10 +28,8 @@ class CustomDataset(Dataset):
         text = self.GT_data.iloc[index, 3]
 
         # get the image data
-        # img_path = os.path.join(self.image_path, str(id) + '.jpg')
-        # img = Image.open(img_path).convert('RGB')
-        # if self.transform:
-        #     img = self.transform(img)
+        img_path = os.path.join(self.image_path, str(id) + '.jpg')
+        img = torch.load(img_path)
 
         # get the img_txt data and append it to the text data
         text_img_txt_path = os.path.join(self.img_txt_path, str(id) + '.json')
@@ -49,5 +48,5 @@ class CustomDataset(Dataset):
             return_attention_mask=True,
             return_tensors='pt',
         )
-        return encoding['input_ids'].squeeze(0), encoding['attention_mask'].squeeze(0), torch.tensor([label], dtype=torch.float)
+        return encoding['input_ids'].squeeze(0), encoding['attention_mask'].squeeze(0), img, torch.tensor([label], dtype=torch.float)
         
