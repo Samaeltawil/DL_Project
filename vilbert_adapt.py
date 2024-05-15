@@ -1,12 +1,10 @@
 import torch
 import torch.nn as nn
-import torchvision.models as models
-from transformers import BertModel, VisualBertModel
-from transformers.models.bert.modeling_bert import BertPooler
+from transformers import BertModel
 
-class MemeClassifier(nn.Module):
+class CustomBert(nn.Module):
     def __init__(self, bert_model='bert-base-uncased', num_labels=1):
-        super(MemeClassifier, self).__init__()
+        super(CustomBert, self).__init__()
         self.bert = BertModel.from_pretrained(bert_model)  # Load pre-trained BERT
 
         # Freeze BERT layers

@@ -8,12 +8,16 @@ from torch.utils.data import Dataset, DataLoader
 import torch
 import pandas as pd
 
-class MemeDataset(Dataset):
-    def __init__(self, GT_path, image_path, transform=None):
+class CustomDataset(Dataset):
+    def __init__(self, GT_path, image_path, img_txt_path, transform=None):
         self.GT_path = GT_path
+        self.image_path = image_path
+        self.img_txt_path = img_txt_path
+        self.transform = transform
+
         self.GT_data = pd.read_csv(GT_path)
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        self.max_len = 256
+        self.max_len = 256 # max length of the text (arbitrary)
 
     def __len__(self):
         return len(self.GT_data)
