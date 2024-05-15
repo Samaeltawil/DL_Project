@@ -103,6 +103,8 @@ def create_csv_labels(json_file, csv_file, img_txt_path):
                 text = user_data.get('tweet_text', [])
                 text = tweet_preprocessing(text=text)
                 hateful_label = hateful_or_not(labels)
+                if hateful_label != 0 and hateful_label != 1:
+                    continue
                 # Write data to CSV file
                 writer.writerow({'user_id': user_id, 'labels': labels, 'hateful_label': hateful_label, 'text': text})
                 cmpt += 1
