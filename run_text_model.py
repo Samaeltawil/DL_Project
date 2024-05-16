@@ -124,7 +124,7 @@ def train_model(model, train_loader, val_loader, metrics, num_epochs=1, learning
 
         test_metrics_log[0].append(val_accuracy)
 
-        plot_training(train_loss_log, metrics_names, train_metrics_log)
+        # plot_training(train_loss_log, metrics_names, train_metrics_log)
 
         # print(f'Epoch {epoch + 1}/{num_epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}')
         print(f'Epoch {epoch + 1}/{num_epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}')
@@ -148,7 +148,7 @@ def save_metrics_log(train_loss_log, train_metrics_log, test_metrics_log, metric
 
 def run_text_model():
 
-    dataset_path = ''
+    dataset_path = PARENT_DIR
     # Load dataset
     image_path = os.path.join(dataset_path, 'dataset/img_tens')
     img_text_path = os.path.join(dataset_path, 'dataset/img_txt')

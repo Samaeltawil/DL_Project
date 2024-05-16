@@ -3,13 +3,13 @@
 #SBATCH --ntasks 1
 #SBATCH --cpus-per-task 1
 #SBATCH --mem 4G
-#SBATCH --time 01:00:00
+#SBATCH --time 00:30:00
 #SBATCH --gres gpu:1
 #SBATCH --account ee-559
 #SBATCH --qos ee-559
 
 # The --reservation line only works during the class.
-conda activate DL_MP
+conda activate DL_env
 echo $CONDA_PREFIX
 echo "$PWD"
 python run_text_model.py 
