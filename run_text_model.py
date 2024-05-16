@@ -18,6 +18,7 @@ sys.path.append(PARENT_DIR)
 
 from custom_dataset import CustomDataset
 from vilbert_adapt import CustomBert
+
 def update_metrics_log(metrics_names, metrics_log, new_metrics_dict):
         for i in range(len(metrics_names)):
             curr_metric_name = metrics_names[i]
@@ -26,25 +27,6 @@ def update_metrics_log(metrics_names, metrics_log, new_metrics_dict):
             print('metrics_log[i]', metrics_log[i])
             metrics_log[i].append(new_metrics_dict[curr_metric_name])
         return metrics_log
-
-def plot_training(train_loss, metrics_names, train_metrics_logs, test_metrics_logs):
-    fig, ax = plt.subplots(1, len(metrics_names) + 1, figsize=((len(metrics_names) + 1) * 5, 5))
-    ax[0].plot(train_loss, c='blue', label='train')
-    # ax[0].plot(test_loss, c='orange', label='test')
-    ax[0].set_title('Loss')
-    ax[0].set_xlabel('epoch')
-    ax[0].legend()
-
-    for i in range(len(metrics_names)):
-        print('train_metrics_logs[i]', train_metrics_logs[i])
-        ax[i + 1].plot(train_metrics_logs[i], c='blue', label='train')
-        ax[i + 1].plot(test_metrics_logs[i], c='orange', label='test')
-        ax[i + 1].set_title(metrics_names[i])
-        ax[i + 1].set_xlabel('epoch')
-        ax[i + 1].legend()
-
-    # plt.show()
-
 
 def train_model(model, train_loader, val_loader, metrics, num_epochs=1, learning_rate=0.001):
     torch.cuda.empty_cache()
@@ -129,7 +111,7 @@ def train_model(model, train_loader, val_loader, metrics, num_epochs=1, learning
         # print(f'Epoch {epoch + 1}/{num_epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}')
         print(f'Epoch {epoch + 1}/{num_epochs}, Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}')
 
-        return train_loss_log, train_metrics_log, test_metrics_log
+    return train_loss_log, train_metrics_log, test_metrics_log
 
 def acc(preds, target):
     return accuracy_score(target.detach().cpu(), preds.detach().cpu())
@@ -155,28 +137,41 @@ def run_text_model():
     json_path = os.path.join(dataset_path, 'dataset/MMHS150K_GT.json')
     GT_path = os.path.join(dataset_path, 'dataset/MMHS150K_Custom.csv')
 
-    dataset = CustomDataset(GT_path, image_path, img_text_path)
-    
-    
+    # open the csv
+    GT_data = pd.read_csv(GT_path)
+
+    # create the splits from ratio
+    train_split = 0.1
+    val_split = 0.8
+    test_split = 0.1
+
+    # create the splits with ratios
+    train_data = GT_data.sample(frac=train_split, random_state=42)
+    val_data = GT_data.drop(train_data.index).sample(frac=val_split/(val_split + test_split), random_state=42)
+    test_data = GT_data.drop(train_data.index).drop(val_data.index)
+
+    train_set = CustomDataset(train_data, image_path, img_text_path)
+    val_set = CustomDataset(val_data, image_path, img_text_path)
+    test_set = CustomDataset(test_data, image_path, img_text_path)    
+
     # Define hyperparameters -------------------------------------------------------
 
     batch_size = 10
 
     # ------------------------------------------------------------------------------
 
-    # Split dataset into training, validation, and test sets
-    dataset_size = len(dataset)
-    train_set, test_set, val_set = torch.utils.data.dataset.random_split(dataset, [0.1, 0.8, 0.1])
+    print("\n")
+    print(f"train_set ratio hate: {sum(train_set.labels)/len(train_set.labels)}")
 
+    # train_set, test_set, val_set = torch.utils.data.dataset.random_split(dataset, [0.1, 0.8, 0.1])
     # Create data loader for training set
     not_hate_indices = []
     hate_indices = []
-    for idx in range(len(train_set)):
-        print(f"{idx}/{len(train_set)}")
-        if train_set[idx][3] == 1:
-            hate_indices.append(idx)
+    for element in zip(train_set.ids, train_set.labels):
+        if element[1] == 1:
+            hate_indices.append(element[0])
         else:
-            not_hate_indices.append(idx)
+            not_hate_indices.append(element[0])
 
     num_not_hate = len(not_hate_indices)
     num_hate = len(hate_indices)
@@ -186,14 +181,14 @@ def run_text_model():
     class_weights = [1-num_hate/total_samples, 1-num_not_hate/ total_samples]  # Inverse of number of samples per class
 
     weights = []
-    for idx in range(len(train_set)):
+    for element in zip(train_set.ids, train_set.labels):
         try:
-            label = train_set[idx][3]
+            label = element[1]
             according_weights = class_weights[int(label)]
             weights.append(according_weights)
         except:
-            print(f"Error with idx: {idx}")
-            print(f"Label: {train_set[idx][3]}")
+            print(f"Error with idx: {element[0]}")
+            print(f"Label: {element[1]}")
 
     # weights = [class_weights[int(dataset[idx]['label'])] for idx in train_indices]
     sampler = WeightedRandomSampler(weights, len(weights))

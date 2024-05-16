@@ -9,14 +9,14 @@ import torch
 import json
 
 class CustomDataset(Dataset):
-    def __init__(self, GT_path, image_path, img_txt_path, transform=None):
-        self.GT_path = GT_path
+    def __init__(self, GT_data, image_path, img_txt_path, transform=None):
         self.image_path = image_path
         self.img_txt_path = img_txt_path
         self.transform = transform
 
-        self.GT_data = pd.read_csv(GT_path)
-        self.ids_labels = [self.GT_data.iloc[:, 0].values, self.GT_data.iloc[:, 2].values]
+        self.GT_data = GT_data
+        self.labels = self.GT_data.iloc[:, 2].values
+        self.ids = self.GT_data.iloc[:, 0].values
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         self.max_len = 256 # max length of the text (arbitrary)
 
