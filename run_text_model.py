@@ -88,6 +88,7 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
                 batch = [b.to(device) for b in batch]
                 text, mask, img, labels = batch
                 outputs = model(text, mask)
+                # print(outputs)
                 loss = criterion(outputs, labels.float())
                 predicted = (outputs.detach() > 0.5)
                 epoch_loss += loss.item()
@@ -96,7 +97,10 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
 
             epoch_loss /= len(test_loader)
             for k in epoch_metrics_eval.keys():
+                print(f"\nDEBUG: update div epoch metrics {epoch_metrics_eval[k] / len(test_loader)}")
                 epoch_metrics_eval[k] /= len(test_loader)
+        
+            print(f"\nDEBUG: {eval_metrics_log}")
 
             eval_loss_log.append(epoch_loss)
             eval_metrics_log = update_metrics_log(metrics_names, eval_metrics_log, epoch_metrics_eval)
@@ -137,9 +141,9 @@ def run_text_model():
     batch_size = 10
     
     # create the splits from ratio
-    train_split = 0.1
+    train_split = 0.8
     test_split = 0.1
-    val_split = 0.8
+    val_split = 0.1
     
     # ------------------------------------------------------------------------------
 
@@ -168,12 +172,15 @@ def run_text_model():
     val_set = CustomDataset(val_data, image_path, img_text_path)
 
     print("\n")
-    print(f"train_set ratio hate: {sum(train_set.labels)/len(train_set.labels)}")
+    print(f"test_set ratio hate: {sum(test_set.labels)/len(test_set.labels)}")
     print("\n")
 
     # Create data loader for training set
     not_hate_indices = []
     hate_indices = []
+
+    # Balancing the train loader
+
     for element in zip(train_set.ids, train_set.labels):
         if element[1] == 1:
             hate_indices.append(element[0])
@@ -198,14 +205,46 @@ def run_text_model():
             print(f"Label: {element[1]}")
 
     # weights = [class_weights[int(dataset[idx]['label'])] for idx in train_indices]
-    sampler = WeightedRandomSampler(weights, len(weights))
+    sampler_train = WeightedRandomSampler(weights, len(weights))
+
+
+    # balancing the test loader
+
+    not_hate_indices = []
+    hate_indices = []
+
+    for element in zip(test_set.ids, test_set.labels):
+        if element[1] == 1:
+            hate_indices.append(element[0])
+        else:
+            not_hate_indices.append(element[0])
+
+    num_not_hate = len(not_hate_indices)
+    num_hate = len(hate_indices)
+    total_samples = num_not_hate + num_hate
+
+    # Create a WeightedRandomSampler to balance the training dataset
+    class_weights = [1-num_hate/total_samples, 1-num_not_hate/ total_samples]  # Inverse of number of samples per class
+
+    weights = []
+    for element in zip(test_set.ids, test_set.labels):
+        try:
+            label = element[1]
+            according_weights = class_weights[int(label)]
+            weights.append(according_weights)
+        except:
+            print(f"Error with idx: {element[0]}")
+            print(f"Label: {element[1]}")
+
+    # weights = [class_weights[int(dataset[idx]['label'])] for idx in train_indices]
+    sampler_test = WeightedRandomSampler(weights, len(weights))
 
     # Create data loader for balanced training set
-    train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, sampler=sampler)
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, sampler=sampler_train)
 
     # Create data loaders for validation and test sets
     validation_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size)
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size)
+    test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, sampler=sampler_test)
 
     print("\nINFO: loader loaded")
 
@@ -216,14 +255,14 @@ def run_text_model():
     print("\nINFO: training start")
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training start time: {current_time}\n")
-    train_loss_log, train_metrics_log, eval_metrics_log = train_model(model, train_loader, test_loader, metrics, num_epochs=2, learning_rate=0.0001)
+    train_loss_log, train_metrics_log, eval_metrics_log = train_model(model, train_loader, test_loader, metrics, num_epochs=5, learning_rate=0.0001)
     
     print("\n===============================================================================================")
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training end: {current_time}")
     print("===============================================================================================")
 
-    print(f"train_metrics_log shape: {np.shape(train_metrics_log)}")
+    # print(f"DEBUG: train_metrics_log shape: {np.shape(train_metrics_log)}")
 
     print("\nINFO: saving results")
     test_results_path = os.path.join(PARENT_DIR, "results", "fcm_test_results_" + time.strftime("%y%m%d_%H%M") + ".csv",)
