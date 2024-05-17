@@ -27,7 +27,7 @@ def update_metrics_log(metrics_names, metrics_log, new_metrics_dict):
             # print('new_metrics_dict[curr_metric_name]', new_metrics_dict[curr_metric_name])
             # print('metrics_log[i]', metrics_log[i])
             # metrics_log[i].append(new_metrics_dict[curr_metric_name])
-            metrics_log[i].append([new_metrics_dict[curr_metric_name]])
+            metrics_log[i].append(new_metrics_dict[curr_metric_name])
         return metrics_log
 
 def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learning_rate=0.001):
@@ -61,7 +61,6 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
             loss = criterion(outputs, labels.float())
             loss.backward()
             optimizer.step()
-            predicted = (outputs.detach() > 0.5)
             with torch.no_grad():
                 predicted = (outputs.detach() > 0.5)
                 epoch_loss += loss.item()
@@ -81,8 +80,7 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
         
         # Validation phase
         model.eval()
-        eval_loss = 0.0
-        epoch_metrics = dict(zip(metrics.keys(), torch.zeros(len(metrics))))
+        epoch_metrics_eval = dict(zip(metrics.keys(), torch.zeros(len(metrics))))
         epoch_loss = 0.0
 
         with torch.no_grad():
@@ -94,14 +92,14 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
                 predicted = (outputs.detach() > 0.5)
                 epoch_loss += loss.item()
                 for name,metric in metrics.items():
-                    epoch_metrics[name] += metric(predicted.float(), labels.float())
+                    epoch_metrics_eval[name] += metric(predicted.float(), labels.float())
 
             epoch_loss /= len(test_loader)
-            for k in epoch_metrics.keys():
-                epoch_metrics[k] /= len(test_loader)
+            for k in epoch_metrics_eval.keys():
+                epoch_metrics_eval[k] /= len(test_loader)
 
             eval_loss_log.append(epoch_loss)
-            eval_metrics_log = update_metrics_log(metrics_names, eval_metrics_log, epoch_metrics)
+            eval_metrics_log = update_metrics_log(metrics_names, eval_metrics_log, epoch_metrics_eval)
             print(f"\ntest metrics log: {eval_metrics_log}")
 
     return train_loss_log, train_metrics_log, eval_metrics_log
@@ -111,16 +109,24 @@ def acc(preds, target):
 
 def save_metrics_log(train_loss_log, train_metrics_log, eval_metrics_log, metrics, test_results_path):
     # Convert lists to pandas DataFrame
-    print(f"\n metrics {metrics}, shape {np.shape(metrics)}")
+    # Convert tensors to numbers and transpose the list of lists
+    train_metrics_log = [[t.item() for t in sublist] for sublist in train_metrics_log]
+    eval_metrics_log = [[t.item() for t in sublist] for sublist in eval_metrics_log]
+
+    train_metrics_log_transposed = list(map(list, zip(*train_metrics_log)))
+    eval_metrics_log_transposed = list(map(list, zip(*eval_metrics_log)))
+    
     train_loss_df = pd.DataFrame(train_loss_log, columns=['train_loss'])
-    train_metrics_df = pd.DataFrame(train_metrics_log, columns=['train_' + metric for metric in metrics.keys()])
-    test_metrics_df = pd.DataFrame(eval_metrics_log, columns=['test_' + metric for metric in metrics.keys()])
+    train_metrics_df = pd.DataFrame(train_metrics_log_transposed, columns=['train_' + metric for metric in metrics.keys()])
+    test_metrics_df = pd.DataFrame(eval_metrics_log_transposed, columns=['test_' + metric for metric in metrics.keys()])
 
     # Concatenate DataFrames
     metrics_df = pd.concat([train_loss_df, train_metrics_df, test_metrics_df], axis=1)
 
     # Save DataFrame to CSV file
     metrics_df.to_csv(test_results_path, index=False)
+
+    print("\n INFO: metrics saved")
 
 # ==================================================================================================================================
 
@@ -211,11 +217,11 @@ def run_text_model():
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training start time: {current_time}\n")
     train_loss_log, train_metrics_log, eval_metrics_log = train_model(model, train_loader, test_loader, metrics, num_epochs=2, learning_rate=0.0001)
+    
     print("\n===============================================================================================")
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training end: {current_time}")
-
-    print("\n===============================================================================================")
+    print("===============================================================================================")
 
     print(f"train_metrics_log shape: {np.shape(train_metrics_log)}")
 
