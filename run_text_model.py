@@ -12,6 +12,7 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from sklearn.metrics import f1_score, accuracy_score 
+import numpy as np
 
 PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(PARENT_DIR)
@@ -25,10 +26,11 @@ def update_metrics_log(metrics_names, metrics_log, new_metrics_dict):
             # print('curr_metric_name', curr_metric_name)
             # print('new_metrics_dict[curr_metric_name]', new_metrics_dict[curr_metric_name])
             # print('metrics_log[i]', metrics_log[i])
-            metrics_log[i].append(new_metrics_dict[curr_metric_name])
+            # metrics_log[i].append(new_metrics_dict[curr_metric_name])
+            metrics_log[i].append([new_metrics_dict[curr_metric_name]])
         return metrics_log
 
-def train_model(model, train_loader, val_loader, metrics, num_epochs=1, learning_rate=0.001):
+def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learning_rate=0.001):
     torch.cuda.empty_cache()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # device = torch.device("cpu")
@@ -94,13 +96,13 @@ def train_model(model, train_loader, val_loader, metrics, num_epochs=1, learning
                 for name,metric in metrics.items():
                     epoch_metrics[name] += metric(predicted.float(), labels.float())
 
-        epoch_loss /= len(test_loader)
-        for k in epoch_metrics.keys():
-            epoch_metrics[k] /= len(test_loader)
+            epoch_loss /= len(test_loader)
+            for k in epoch_metrics.keys():
+                epoch_metrics[k] /= len(test_loader)
 
-        eval_loss_log.append(epoch_loss)
-        eval_metrics_log = update_metrics_log(metrics_names, eval_metrics_log, epoch_metrics)
-        print(f"\ntest metrics log: {eval_metrics_log}")
+            eval_loss_log.append(epoch_loss)
+            eval_metrics_log = update_metrics_log(metrics_names, eval_metrics_log, epoch_metrics)
+            print(f"\ntest metrics log: {eval_metrics_log}")
 
     return train_loss_log, train_metrics_log, eval_metrics_log
 
@@ -109,6 +111,7 @@ def acc(preds, target):
 
 def save_metrics_log(train_loss_log, train_metrics_log, eval_metrics_log, metrics, test_results_path):
     # Convert lists to pandas DataFrame
+    print(f"\n metrics {metrics}, shape {np.shape(metrics)}")
     train_loss_df = pd.DataFrame(train_loss_log, columns=['train_loss'])
     train_metrics_df = pd.DataFrame(train_metrics_log, columns=['train_' + metric for metric in metrics.keys()])
     test_metrics_df = pd.DataFrame(eval_metrics_log, columns=['test_' + metric for metric in metrics.keys()])
@@ -128,9 +131,9 @@ def run_text_model():
     batch_size = 10
     
     # create the splits from ratio
-    train_split = 0.8
+    train_split = 0.1
     test_split = 0.1
-    val_split = 0.1
+    val_split = 0.8
     
     # ------------------------------------------------------------------------------
 
@@ -207,11 +210,14 @@ def run_text_model():
     print("\nINFO: training start")
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training start time: {current_time}\n")
-    train_loss_log, train_metrics_log, eval_metrics_log = train_model(model, train_loader, test_loader, metrics, num_epochs=3, learning_rate=0.0001)
+    train_loss_log, train_metrics_log, eval_metrics_log = train_model(model, train_loader, test_loader, metrics, num_epochs=2, learning_rate=0.0001)
+    print("\n===============================================================================================")
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training end: {current_time}")
 
     print("\n===============================================================================================")
+
+    print(f"train_metrics_log shape: {np.shape(train_metrics_log)}")
 
     print("\nINFO: saving results")
     test_results_path = os.path.join(PARENT_DIR, "results", "fcm_test_results_" + time.strftime("%y%m%d_%H%M") + ".csv",)
