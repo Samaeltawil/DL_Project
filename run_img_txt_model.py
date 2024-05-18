@@ -166,9 +166,9 @@ def run_text_model():
     val_data = GT_data.drop(train_data.index).sample(frac=val_split/(val_split + test_split), random_state=42)
     test_data = GT_data.drop(train_data.index).drop(val_data.index)
 
-    train_set = CustomDataset(train_data, image_path, img_text_path, shuffle=True, num_workers=4)
-    test_set = CustomDataset(test_data, image_path, img_text_path, shuffle=True, num_workers=4)    
-    val_set = CustomDataset(val_data, image_path, img_text_path, shuffle=True, num_workers=4)
+    train_set = CustomDataset(train_data, image_path, img_text_path, shuffle=True)
+    test_set = CustomDataset(test_data, image_path, img_text_path, shuffle=True)    
+    val_set = CustomDataset(val_data, image_path, img_text_path, shuffle=True)
 
     print("\n")
     print(f"test_set ratio hate: {sum(test_set.labels)/len(test_set.labels)}")
@@ -247,7 +247,7 @@ def run_text_model():
 
     print("\nINFO: loader loaded")
 
-    model = CustomBert()
+    model = ResNet_Bert()
 
     metrics = {'ACC': acc}
 
