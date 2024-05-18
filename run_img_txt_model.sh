@@ -1,5 +1,5 @@
 #!/bin/bash -l
-#SBATCH --chdir /home/coderey/project
+#SBATCH --chdir /home/coderey/project/DL_Project
 #SBATCH --ntasks 1
 #SBATCH --cpus-per-task 1
 #SBATCH --mem 4G
