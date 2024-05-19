@@ -11,7 +11,7 @@ class ResNet_Bert(nn.Module):
         super(ResNet_Bert, self).__init__()
         self.resnet = torch.hub.load('pytorch/vision:v0.10.0', resnet_model, pretrained=True)
         self.resnet.eval()
-        self.res_num_features = 512 # ResNet18
+        self.res_num_features = 1000 # ResNet18
         self.sigmoid = nn.Sigmoid()
 
         self.bert = BertModel.from_pretrained(bert_model)  # Load pre-trained BERT
