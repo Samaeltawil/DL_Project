@@ -12,6 +12,8 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from sklearn.metrics import f1_score, accuracy_score 
+from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import numpy as np
 
 PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -43,6 +45,9 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
 
     criterion = nn.BCELoss() # Binary cross-entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    all_labels = []
+    all_outputs = []
 
     for epoch in range(num_epochs):
         print("\n----------------------------------------------------------------------------")
@@ -95,12 +100,15 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
                 for name,metric in metrics.items():
                     epoch_metrics_eval[name] += metric(predicted.float(), labels.float())
 
+                all_labels.extend(labels.cpu().numpy())
+                all_outputs.extend(outputs.cpu().numpy())
+
             epoch_loss /= len(test_loader)
             for k in epoch_metrics_eval.keys():
-                print(f"\nDEBUG: update div epoch metrics {epoch_metrics_eval[k] / len(test_loader)}")
+                # print(f"\nDEBUG: update div epoch metrics {epoch_metrics_eval[k] / len(test_loader)}")
                 epoch_metrics_eval[k] /= len(test_loader)
         
-            print(f"\nDEBUG: {eval_metrics_log}")
+            # print(f"\nDEBUG: {eval_metrics_log}")
 
             eval_loss_log.append(epoch_loss)
             eval_metrics_log = update_metrics_log(metrics_names, eval_metrics_log, epoch_metrics_eval)
@@ -138,12 +146,12 @@ def run_text_model():
 
     # Define hyperparameters -------------------------------------------------------
 
-    batch_size = 10
+    batch_size = 20
     
     # create the splits from ratio
-    train_split = 0.8
+    train_split = 0.1
     test_split = 0.1
-    val_split = 0.1
+    val_split = 0.8
     
     # ------------------------------------------------------------------------------
 
@@ -255,12 +263,51 @@ def run_text_model():
     print("\nINFO: training start")
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training start time: {current_time}\n")
-    train_loss_log, train_metrics_log, eval_metrics_log = train_model(model, train_loader, test_loader, metrics, num_epochs=5, learning_rate=0.0001)
+    train_loss_log, train_metrics_log, eval_metrics_log = train_model(model, train_loader, test_loader, metrics, num_epochs=9, learning_rate=0.0005)
     
     print("\n===============================================================================================")
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training end: {current_time}")
     print("===============================================================================================")
+
+    print(f"\ncalculating ROC")
+    # Calculate ROC curve and AUC
+    fpr, tpr, thresholds = roc_curve(all_labels, all_outputs)
+    roc_auc = auc(fpr, tpr)
+
+    # Plot ROC curve
+    plt.figure()
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:0.2f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic')
+    plt.legend(loc="lower right")
+
+    # Save the ROC plot
+    results_dir = os.path.join(PARENT_DIR, "results/plots")
+    os.makedirs(results_dir, exist_ok=True)
+    roc_plot_path = os.path.join(results_dir, "roc_curve_" + time.strftime("%y%m%d_%H%M") + ".png")
+    plt.savefig(roc_plot_path)
+    plt.close()
+
+    print(f"\nINFO: ROC curve saved at {roc_plot_path}")
+    print(f"\ncalculating confusion matrix")
+
+    # Calculate and plot confusion matrix
+    predicted_labels = (np.array(all_outputs) > 0.5).astype(int)
+    cm = confusion_matrix(all_labels, predicted_labels)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1])
+    disp.plot(cmap=plt.cm.Blues)
+
+    # Save the confusion matrix plot
+    cm_plot_path = os.path.join(results_dir, "confusion_matrix_" + time.strftime("%y%m%d_%H%M") + ".png")
+    plt.savefig(cm_plot_path)
+    plt.close()
+
+    print(f"\nINFO: Confusion matrix saved at {cm_plot_path}")
 
     # print(f"DEBUG: train_metrics_log shape: {np.shape(train_metrics_log)}")
 
