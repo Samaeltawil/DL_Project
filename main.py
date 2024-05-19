@@ -20,7 +20,7 @@ PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(PARENT_DIR)
 
 from custom_dataset import CustomDataset
-from custom_models import CustomBert
+from custom_models import CustomBert, ResNet_Bert
 
 def update_metrics_log(metrics_names, metrics_log, new_metrics_dict):
         for i in range(len(metrics_names)):
@@ -28,11 +28,12 @@ def update_metrics_log(metrics_names, metrics_log, new_metrics_dict):
             metrics_log[i].append(new_metrics_dict[curr_metric_name])
         return metrics_log
 
-def plot_loss(train_loss_log, name="loss_plot_unamed", save_path='results/plots'):
+def plot_loss(train_loss_log, test_loss_log, name="loss_plot_unamed", save_path=os.path.join(PARENT_DIR, "results/plots")):
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     plt.figure()
     plt.plot(train_loss_log, label='Train Loss')
+    plt.plot(test_loss_log, label='Test Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.title('Training Loss')
@@ -71,7 +72,10 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
             batch = [b.to(device) for b in batch]
             text, mask, img, labels = batch
             optimizer.zero_grad()
-            outputs = model(text, mask)
+            if model.name == "CustomBert":
+                outputs = model(text, mask)
+            elif model.name == "ResNet_Bert":
+                outputs = model(text, mask, img)
             loss = criterion(outputs, labels.float())
             loss.backward()
             optimizer.step()
@@ -101,7 +105,10 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
             for batch in test_loader:
                 batch = [b.to(device) for b in batch]
                 text, mask, img, labels = batch
-                outputs = model(text, mask)
+                if model.name == "CustomBert":
+                    outputs = model(text, mask)
+                elif model.name == "ResNet_Bert":
+                    outputs = model(text, mask, img)
                 # print(outputs)
                 loss = criterion(outputs, labels.float())
                 predicted = (outputs.detach() > 0.5)
@@ -123,7 +130,7 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
             eval_metrics_log = update_metrics_log(metrics_names, eval_metrics_log, epoch_metrics_eval)
             print(f"\ntest metrics log: {eval_metrics_log}")
     
-    plot_loss(train_loss_log, name=("loss_plot_" + time.strftime("%y%m%d_%H%M")))
+    plot_loss(train_loss_log, eval_loss_log, name=(f"loss_plot_{model.name}_" + time.strftime("%y%m%d_%H%M")))
 
     return train_loss_log, train_metrics_log, eval_metrics_log, all_labels, all_outputs
 
@@ -246,6 +253,8 @@ def run_text_model():
 
     model = CustomBert()
 
+    print(f"\nINFO: model used: {model.name}")
+
     metrics = {
         'ACC': acc,
         'F1': f1
@@ -274,13 +283,13 @@ def run_text_model():
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic')
+    plt.title(f'Receiver Operating Characteristic {model.name}')
     plt.legend(loc="lower right")
 
     # Save the ROC plot
     results_dir = os.path.join(PARENT_DIR, "results/plots")
     os.makedirs(results_dir, exist_ok=True)
-    roc_plot_path = os.path.join(results_dir, "roc_curve_" + time.strftime("%y%m%d_%H%M") + ".png")
+    roc_plot_path = os.path.join(results_dir, f"roc_curve_{model.name}_" + time.strftime("%y%m%d_%H%M") + ".png")
     plt.savefig(roc_plot_path)
     plt.close()
 
@@ -294,7 +303,7 @@ def run_text_model():
     disp.plot(cmap=plt.cm.Blues)
 
     # Save the confusion matrix plot
-    cm_plot_path = os.path.join(results_dir, "confusion_matrix_" + time.strftime("%y%m%d_%H%M") + ".png")
+    cm_plot_path = os.path.join(results_dir, f"confusion_matrix_{model.name}_" + time.strftime("%y%m%d_%H%M") + ".png")
     plt.savefig(cm_plot_path)
     plt.close()
 
