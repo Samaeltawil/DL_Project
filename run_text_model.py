@@ -114,13 +114,13 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
             eval_metrics_log = update_metrics_log(metrics_names, eval_metrics_log, epoch_metrics_eval)
             print(f"\ntest metrics log: {eval_metrics_log}")
 
-    return train_loss_log, train_metrics_log, eval_metrics_log
+    return train_loss_log, train_metrics_log, eval_metrics_log, all_labels, all_outputs
 
 def acc(preds, target):
     return accuracy_score(target.detach().cpu(), preds.detach().cpu())
 
 def f1(preds, target):
-    return f1_score(target.detach().cpu(), preds.detach().cpu())
+    return f1_score(target.detach().cpu(), preds.detach().cpu(), zero_division=1)
 
 def save_metrics_log(train_loss_log, train_metrics_log, eval_metrics_log, metrics, test_results_path):
     # Convert lists to pandas DataFrame
@@ -186,24 +186,11 @@ def run_text_model():
     print(f"test_set ratio hate: {sum(test_set.labels)/len(test_set.labels)}")
     print("\n")
 
-    # Create data loader for training set
-    not_hate_indices = []
-    hate_indices = []
-
-    # Balancing the train loader
-
-    for element in zip(train_set.ids, train_set.labels):
-        if element[1] == 1:
-            hate_indices.append(element[0])
-        else:
-            not_hate_indices.append(element[0])
-
-    num_not_hate = len(not_hate_indices)
-    num_hate = len(hate_indices)
-    total_samples = num_not_hate + num_hate
+    # balancing the train loader
 
     # Create a WeightedRandomSampler to balance the training dataset
-    class_weights = [1-num_hate/total_samples, 1-num_not_hate/ total_samples]  # Inverse of number of samples per class
+    train_hate_ratio = sum(train_set.labels)/len(train_set.labels)
+    class_weights = [train_hate_ratio, 1-train_hate_ratio]  # Inverse of number of samples per class
 
     weights = []
     for element in zip(train_set.ids, train_set.labels):
@@ -218,24 +205,11 @@ def run_text_model():
     # weights = [class_weights[int(dataset[idx]['label'])] for idx in train_indices]
     sampler_train = WeightedRandomSampler(weights, len(weights))
 
-
     # balancing the test loader
 
-    not_hate_indices = []
-    hate_indices = []
-
-    for element in zip(test_set.ids, test_set.labels):
-        if element[1] == 1:
-            hate_indices.append(element[0])
-        else:
-            not_hate_indices.append(element[0])
-
-    num_not_hate = len(not_hate_indices)
-    num_hate = len(hate_indices)
-    total_samples = num_not_hate + num_hate
-
-    # Create a WeightedRandomSampler to balance the training dataset
-    class_weights = [1-num_hate/total_samples, 1-num_not_hate/ total_samples]  # Inverse of number of samples per class
+    # Create a WeightedRandomSampler to balance the test dataset
+    test_hate_ratio = sum(test_set.labels)/len(test_set.labels)
+    class_weights = [test_hate_ratio, 1-test_hate_ratio]  # Inverse of number of samples per class
 
     weights = []
     for element in zip(test_set.ids, test_set.labels):
@@ -269,7 +243,7 @@ def run_text_model():
     print("\nINFO: training start")
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training start time: {current_time}\n")
-    train_loss_log, train_metrics_log, eval_metrics_log = train_model(model, train_loader, test_loader, metrics, num_epochs=3, learning_rate=0.0005)
+    train_loss_log, train_metrics_log, eval_metrics_log, all_labels, all_outputs = train_model(model, train_loader, test_loader, metrics, num_epochs=3, learning_rate=0.0005)
     
     print("\n===============================================================================================")
     current_time = time.strftime("%H:%M:%S", time.localtime())
