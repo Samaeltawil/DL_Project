@@ -12,6 +12,8 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from sklearn.metrics import f1_score, accuracy_score 
+from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import numpy as np
 
 PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -43,6 +45,9 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
 
     criterion = nn.BCELoss() # Binary cross-entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    all_labels = []
+    all_outputs = []
 
     for epoch in range(num_epochs):
         print("\n----------------------------------------------------------------------------")
@@ -87,28 +92,35 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
             for batch in test_loader:
                 batch = [b.to(device) for b in batch]
                 text, mask, img, labels = batch
-                outputs = model(text, mask, img)
+                outputs = model(text, mask)
+                # print(outputs)
                 loss = criterion(outputs, labels.float())
                 predicted = (outputs.detach() > 0.5)
                 epoch_loss += loss.item()
                 for name,metric in metrics.items():
                     epoch_metrics_eval[name] += metric(predicted.float(), labels.float())
 
+                all_labels.extend(labels.cpu().numpy())
+                all_outputs.extend(outputs.cpu().numpy())
+
             epoch_loss /= len(test_loader)
             for k in epoch_metrics_eval.keys():
-                print(f"\nDEBUG: update div epoch metrics {epoch_metrics_eval[k] / len(test_loader)}")
+                # print(f"\nDEBUG: update div epoch metrics {epoch_metrics_eval[k] / len(test_loader)}")
                 epoch_metrics_eval[k] /= len(test_loader)
         
-            print(f"\nDEBUG: {eval_metrics_log}")
+            # print(f"\nDEBUG: {eval_metrics_log}")
 
             eval_loss_log.append(epoch_loss)
             eval_metrics_log = update_metrics_log(metrics_names, eval_metrics_log, epoch_metrics_eval)
             print(f"\ntest metrics log: {eval_metrics_log}")
 
-    return train_loss_log, train_metrics_log, eval_metrics_log
+    return train_loss_log, train_metrics_log, eval_metrics_log, all_labels, all_outputs
 
 def acc(preds, target):
     return accuracy_score(target.detach().cpu(), preds.detach().cpu())
+
+def f1(preds, target):
+    return f1_score(target.detach().cpu(), preds.detach().cpu(), zero_division=1)
 
 def save_metrics_log(train_loss_log, train_metrics_log, eval_metrics_log, metrics, test_results_path):
     # Convert lists to pandas DataFrame
@@ -140,9 +152,9 @@ def run_text_model():
     batch_size = 20
     
     # create the splits from ratio
-    train_split = 0.8
-    test_split = 0.1
-    val_split = 0.1
+    train_split = 0.9
+    test_split = 0.06
+    val_split = 0.04
     
     # ------------------------------------------------------------------------------
 
@@ -174,10 +186,6 @@ def run_text_model():
     print(f"test_set ratio hate: {sum(test_set.labels)/len(test_set.labels)}")
     print("\n")
 
-    # Create data loader for training set
-    not_hate_indices = []
-    hate_indices = []
-
     # balancing the train loader
 
     # Create a WeightedRandomSampler to balance the training dataset
@@ -198,6 +206,7 @@ def run_text_model():
     sampler_train = WeightedRandomSampler(weights, len(weights))
 
     # balancing the test loader
+
     # Create a WeightedRandomSampler to balance the test dataset
     test_hate_ratio = sum(test_set.labels)/len(test_set.labels)
     class_weights = [test_hate_ratio, 1-test_hate_ratio]  # Inverse of number of samples per class
@@ -226,17 +235,59 @@ def run_text_model():
 
     model = ResNet_Bert()
 
-    metrics = {'ACC': acc}
+    metrics = {
+        'ACC': acc,
+        'F1': f1
+    }
 
     print("\nINFO: training start")
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training start time: {current_time}\n")
-    train_loss_log, train_metrics_log, eval_metrics_log = train_model(model, train_loader, test_loader, metrics, num_epochs=5, learning_rate=0.0001)
+    train_loss_log, train_metrics_log, eval_metrics_log, all_labels, all_outputs = train_model(model, train_loader, test_loader, metrics, num_epochs=3, learning_rate=0.0005)
     
     print("\n===============================================================================================")
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training end: {current_time}")
     print("===============================================================================================")
+
+    print(f"\ncalculating ROC")
+    # Calculate ROC curve and AUC
+    fpr, tpr, thresholds = roc_curve(all_labels, all_outputs)
+    roc_auc = auc(fpr, tpr)
+
+    # Plot ROC curve
+    plt.figure()
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:0.2f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic')
+    plt.legend(loc="lower right")
+
+    # Save the ROC plot
+    results_dir = os.path.join(PARENT_DIR, "results/plots")
+    os.makedirs(results_dir, exist_ok=True)
+    roc_plot_path = os.path.join(results_dir, "roc_curve_" + time.strftime("%y%m%d_%H%M") + ".png")
+    plt.savefig(roc_plot_path)
+    plt.close()
+
+    print(f"\nINFO: ROC curve saved at {roc_plot_path}")
+    print(f"\ncalculating confusion matrix")
+
+    # Calculate and plot confusion matrix
+    predicted_labels = (np.array(all_outputs) > 0.5).astype(int)
+    cm = confusion_matrix(all_labels, predicted_labels)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1])
+    disp.plot(cmap=plt.cm.Blues)
+
+    # Save the confusion matrix plot
+    cm_plot_path = os.path.join(results_dir, "confusion_matrix_" + time.strftime("%y%m%d_%H%M") + ".png")
+    plt.savefig(cm_plot_path)
+    plt.close()
+
+    print(f"\nINFO: Confusion matrix saved at {cm_plot_path}")
 
     # print(f"DEBUG: train_metrics_log shape: {np.shape(train_metrics_log)}")
 
