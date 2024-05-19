@@ -50,9 +50,3 @@ class ResNet_Bert(nn.Module):
 
         return logits
     
-
-# input_tensor = preprocess(input_image)
-# input_batch = input_tensor.unsqueeze(0)
-
-# with torch.no_grad():
-#     output = model(input_batch)
