@@ -152,9 +152,9 @@ def run_text_model():
     batch_size = 20
     
     # create the splits from ratio
-    train_split = 0.9
-    test_split = 0.06
-    val_split = 0.04
+    train_split = 0.8
+    test_split = 0.1
+    val_split = 0.1
     
     # ------------------------------------------------------------------------------
 

@@ -46,7 +46,7 @@ class ResNet_Bert(nn.Module):
         # concatenates the two outputs
         logits = torch.cat((res_outputs, bert_logits), 1)
         logits = self.fc(logits)
-        logits = F.relu(logits)
+        logits = self.sigmoid(logits)
 
         return logits
     
