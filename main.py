@@ -16,6 +16,8 @@ from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import numpy as np
 
+MODEL_NAME = "CustomBert"
+
 PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(PARENT_DIR)
 
@@ -163,16 +165,16 @@ def save_metrics_log(train_loss_log, train_metrics_log, eval_metrics_log, metric
 
 # ==================================================================================================================================
 
-def run_text_model():
+def run_model(model_name="CustomBert"):
 
     # Define hyperparameters -------------------------------------------------------
 
     batch_size = 20
     
     # create the splits from ratio
-    train_split = 0.1
-    test_split = 0.1
-    val_split = 0.8
+    train_split = 0.85
+    test_split = 0.05
+    val_split = 0.1
     
     # ------------------------------------------------------------------------------
 
@@ -251,7 +253,10 @@ def run_text_model():
 
     print("\nINFO: loader loaded")
 
-    model = CustomBert()
+    if model_name = "CustomBert":
+        model = CustomBert()
+    elif model_name = "ResNet_Bert":
+        model = ResNet_Bert()
 
     print(f"\nINFO: model used: {model.name}")
 
@@ -263,7 +268,7 @@ def run_text_model():
     print("\nINFO: training start")
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training start time: {current_time}\n")
-    train_loss_log, train_metrics_log, eval_metrics_log, all_labels, all_outputs = train_model(model, train_loader, test_loader, metrics, num_epochs=3, learning_rate=0.0005)
+    train_loss_log, train_metrics_log, eval_metrics_log, all_labels, all_outputs = train_model(model, train_loader, test_loader, metrics, num_epochs=10, learning_rate=0.0005)
     
     print("\n===============================================================================================")
     current_time = time.strftime("%H:%M:%S", time.localtime())
@@ -316,5 +321,5 @@ def run_text_model():
     save_metrics_log(train_loss_log, train_metrics_log, eval_metrics_log, metrics, test_results_path)
 
 if __name__ == "__main__":
-    run_text_model()
-    print("Done running text model.")
+    run_model(MODEL_NAME)
+    print("Done running model.")
