@@ -16,7 +16,7 @@ from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import numpy as np
 
-MODEL_NAME = "CustomBert"
+MODEL_NAME = "ResNet_Bert"
 
 PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(PARENT_DIR)
@@ -253,9 +253,9 @@ def run_model(model_name="CustomBert"):
 
     print("\nINFO: loader loaded")
 
-    if model_name = "CustomBert":
+    if model_name == "CustomBert":
         model = CustomBert()
-    elif model_name = "ResNet_Bert":
+    elif model_name == "ResNet_Bert":
         model = ResNet_Bert()
 
     print(f"\nINFO: model used: {model.name}")
