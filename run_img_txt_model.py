@@ -67,6 +67,9 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
             loss.backward()
             optimizer.step()
             with torch.no_grad():
+                print('i', i, 'loss', loss, 'outputs', outputs, 'labels', labels, 'predicted', (outputs.detach() > 0.5))
+                if torch.isnan(loss).any() or torch.isinf(loss).any():
+                    raise ValueError("Loss has NaNs or Infs!")
                 predicted = (outputs.detach() > 0.5)
                 epoch_loss += loss.item()
                 for name,metric in metrics.items():
