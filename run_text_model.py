@@ -119,6 +119,9 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
 def acc(preds, target):
     return accuracy_score(target.detach().cpu(), preds.detach().cpu())
 
+def f1(preds, target):
+    return f1_score(target.detach().cpu(), preds.detach().cpu())
+
 def save_metrics_log(train_loss_log, train_metrics_log, eval_metrics_log, metrics, test_results_path):
     # Convert lists to pandas DataFrame
     # Convert tensors to numbers and transpose the list of lists
@@ -258,12 +261,15 @@ def run_text_model():
 
     model = CustomBert()
 
-    metrics = {'ACC': acc}
+    metrics = {
+        'ACC': acc,
+        'F1': f1
+    }
 
     print("\nINFO: training start")
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training start time: {current_time}\n")
-    train_loss_log, train_metrics_log, eval_metrics_log = train_model(model, train_loader, test_loader, metrics, num_epochs=9, learning_rate=0.0005)
+    train_loss_log, train_metrics_log, eval_metrics_log = train_model(model, train_loader, test_loader, metrics, num_epochs=3, learning_rate=0.0005)
     
     print("\n===============================================================================================")
     current_time = time.strftime("%H:%M:%S", time.localtime())
