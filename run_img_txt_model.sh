@@ -9,7 +9,7 @@
 #SBATCH --qos ee-559
 
 # The --reservation line only works during the class.
-# conda activate hatespeech
+conda activate hatespeech
 echo $CONDA_PREFIX
 echo "$PWD"
 python run_img_txt_model.py 
