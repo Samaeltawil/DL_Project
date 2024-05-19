@@ -40,7 +40,7 @@ class ResNet_Bert(nn.Module):
 
         bert_outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
         pooled_output = bert_outputs.pooler_output  # Get the pooled output from BERT
-        bert_logits = self.classifier(pooled_output)
+        bert_logits = self.bert_fc(pooled_output)
         bert_logits = F.relu(bert_logits)
 
         # concatenates the two outputs
