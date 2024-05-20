@@ -16,7 +16,7 @@ from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import numpy as np
 
-MODEL_NAME = "ResNet_Bert"
+MODEL_NAME = "CustomBert"
 
 PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(PARENT_DIR)
@@ -43,6 +43,30 @@ def plot_loss(train_loss_log, test_loss_log, name="loss_plot_unamed", save_path=
     plt.grid(True)
     plt.savefig(os.path.join(save_path, name + '.png'))
     plt.close()
+
+def save_labels_outputs(labels, outputs, save_path):
+    """
+    Save the labels and outputs to a CSV file.
+
+    Parameters:
+    - labels (list): List of labels.
+    - outputs (list): List of outputs.
+    - save_path (str): Path to save the CSV file.
+    """
+    # Ensure the save directory exists
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    # Convert lists to a DataFrame
+    data = {
+        'labels': labels,
+        'outputs': outputs
+    }
+    df = pd.DataFrame(data)
+
+    # Save the DataFrame to a CSV file
+    df.to_csv(save_path, index=False)
+
+    print(f"\nINFO: Labels and outputs saved at {save_path}")
 
 def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learning_rate=0.001):
     torch.cuda.empty_cache()
@@ -274,6 +298,10 @@ def run_model(model_name="CustomBert"):
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training end: {current_time}")
     print("===============================================================================================")
+
+    # Saving all labels, all outputs
+    labels_outputs_path = os.path.join(PARENT_DIR, "results", f"labels_outputs_{model.name}_" + time.strftime("%y%m%d_%H%M") + ".csv")
+    save_labels_outputs(all_labels, all_outputs, labels_outputs_path)
 
     print(f"\ncalculating ROC")
     # Calculate ROC curve and AUC
