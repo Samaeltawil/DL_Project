@@ -7,7 +7,7 @@ class CustomBert(nn.Module):
     def __init__(self, bert_model='bert-base-uncased', num_labels=1):
         super(CustomBert, self).__init__()
         self.bert = BertModel.from_pretrained(bert_model)
-        
+        self.name ="CustomBert"
         # Freeze BERT layers
         for param in self.bert.parameters():
             param.requires_grad = False
@@ -25,6 +25,7 @@ class ResNet_Bert(nn.Module):
     def __init__(self, resnet_model='resnet18', bert_model='bert-base-uncased', num_labels=1):
         super(ResNet_Bert, self).__init__()
         self.resnet = torch.hub.load('pytorch/vision:v0.10.0', resnet_model, pretrained=True)
+        self.name ="ResNet_Bert"
         self.resnet.eval()
         self.res_num_features = 1000
 
