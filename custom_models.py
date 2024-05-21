@@ -72,7 +72,7 @@ class ResNet_Bert(nn.Module):
         return logits
 
 class ResNet50(nn.Module):
-    def __init__(self, resnet_model='resnet50', bert_model='bert-base-uncased', num_labels=1):
+    def __init__(self, resnet_model='resnet50', num_labels=1):
         super(ResNet50, self).__init__()
         self.resnet = torch.hub.load('pytorch/vision:v0.10.0', resnet_model, pretrained=True)
         self.name ="ResNet50"
@@ -89,13 +89,13 @@ class ResNet50(nn.Module):
         self.bn2 = nn.BatchNorm1d(1)
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, input_ids, attention_mask, input_tensor_image):
+    def forward(self input_tensor_image):
         with torch.no_grad():
             res_outputs = self.resnet(input_tensor_image)
         res_outputs = self.resnet_fc(res_outputs)
         res_outputs = F.relu(res_outputs)
         res_outputs = self.dropout(res_outputs)
-        logits = self.fc2(logits)
+        logits = self.fc2(res_outputs)
         logits = self.bn2(logits)
         logits = self.sigmoid(logits)
 
