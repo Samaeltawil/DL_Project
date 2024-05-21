@@ -10,13 +10,14 @@ from torch.utils.data.sampler import WeightedRandomSampler
 import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
-from tqdm import tqdm
-from sklearn.metrics import f1_score, accuracy_score 
-from sklearn.metrics import roc_curve, auc
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+# from tqdm import tqdm
+# from sklearn.metrics import f1_score, accuracy_score 
+# from sklearn.metrics import roc_curve, auc
+# from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import numpy as np
+from ultralytics import YOLO
 
-MODEL_NAME = "ResNet50"
+MODEL_NAME = "Yolov8"
 
 PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(PARENT_DIR)
@@ -137,6 +138,8 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
                     outputs = model(text, mask)
                 elif model.name == "ResNet_Bert":
                     outputs = model(text, mask, img)
+                elif model.name == "ResNet50":
+                    outputs = model(img)
                 # print(outputs)
                 loss = criterion(outputs, labels.float())
                 predicted = (outputs.detach() > 0.5)
@@ -189,6 +192,42 @@ def save_metrics_log(train_loss_log, train_metrics_log, eval_metrics_log, metric
 
     print("\n INFO: metrics saved")
 
+def save_train_split(train_loader):
+    # create a folder saving the images used for training
+    train_images_path = os.path.join(PARENT_DIR, "dataset", "train_split")
+    # os.makedirs(train_images_path, exist_ok=True)
+
+    # # create a folder for hate and non-hate images
+    # hate_path = os.path.join(train_images_path, "hate")
+    # non_hate_path = os.path.join(train_images_path, "non_hate")
+    # os.makedirs(hate_path, exist_ok=True)
+    # os.makedirs(non_hate_path, exist_ok=True)
+
+    # # clear the folders if they are not empty
+    # for file in os.listdir(hate_path):
+    #     os.remove(os.path.join(hate_path, file))
+    # for file in os.listdir(non_hate_path):
+    #     os.remove(os.path.join(non_hate_path, file))
+
+    # # copy the images to the folder
+    # # for batch in train_loader:
+    # for j, batch in enumerate(train_loader):
+    #     print(f"Batch {j}/{len(train_loader)}")
+    #     _, _, img, labels = batch
+    #     for i in range(len(img)):
+    #         if labels[i] == 1:
+    #             img_path = os.path.join(hate_path, f"{j}_{i}.jpg")
+    #         else:
+    #             img_path = os.path.join(non_hate_path, f"{j}_{i}.jpg")
+    #         img_pil = transforms.ToPILImage()(img[i])
+    #         img_pil.save(img_path)
+
+    # print("\nINFO: train split saved")
+
+    return train_images_path
+
+
+
 # ==================================================================================================================================
 
 def run_model(model_name="CustomBert"):
@@ -198,9 +237,7 @@ def run_model(model_name="CustomBert"):
     batch_size = 32
     
     # create the splits from ratio
-    train_split = 0.93
-    test_split = 0.04
-    val_split = 0.03
+    train_split = 0.93 # 93% train, 7% test
     
     # ------------------------------------------------------------------------------
 
@@ -221,12 +258,10 @@ def run_model(model_name="CustomBert"):
 
     # create the splits with ratios
     train_data = GT_data.sample(frac=train_split, random_state=42)
-    val_data = GT_data.drop(train_data.index).sample(frac=val_split/(val_split + test_split), random_state=42)
-    test_data = GT_data.drop(train_data.index).drop(val_data.index)
+    test_data = GT_data.drop(train_data.index)
 
     train_set = CustomDataset(train_data, image_path, img_text_path)
     test_set = CustomDataset(test_data, image_path, img_text_path)    
-    val_set = CustomDataset(val_data, image_path, img_text_path)
 
     print("\n")
     print(f"test_set ratio hate: {sum(test_set.labels)/len(test_set.labels)}")
@@ -273,7 +308,6 @@ def run_model(model_name="CustomBert"):
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, sampler=sampler_train)
 
     # Create data loaders for validation and test sets
-    validation_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size)
     test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, sampler=sampler_test)
 
     print("\nINFO: loader loaded")
@@ -284,8 +318,11 @@ def run_model(model_name="CustomBert"):
         model = ResNet_Bert()
     elif model_name == "ResNet50":
         model = ResNet50()
+    elif model_name == "Yolov8":
+        model = YOLO('yolov8-cls.yaml')
+        train_split_path = save_train_split(train_loader)
 
-    print(f"\nINFO: model used: {model.name}")
+    # print(f"\nINFO: model used: {model.name}")
 
     metrics = {
         'ACC': acc,
@@ -295,7 +332,12 @@ def run_model(model_name="CustomBert"):
     print("\nINFO: training start")
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training start time: {current_time}\n")
-    train_loss_log, train_metrics_log, eval_metrics_log, all_labels, all_outputs = train_model(model, train_loader, test_loader, metrics, num_epochs=2, learning_rate=0.0005)
+    if model_name == "Yolov8":
+        results = model.train(data = train_split_path, epochs = 15, imgsz = 64)   ## Train the Model
+        print(f"\nINFO: Yolov8 training results: {results}")
+        return
+    else:
+        train_loss_log, train_metrics_log, eval_metrics_log, all_labels, all_outputs = train_model(model, train_loader, test_loader, metrics, num_epochs=2, learning_rate=0.0005)
     
     print("\n===============================================================================================")
     current_time = time.strftime("%H:%M:%S", time.localtime())
