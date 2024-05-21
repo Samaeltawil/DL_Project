@@ -192,39 +192,39 @@ def save_metrics_log(train_loss_log, train_metrics_log, eval_metrics_log, metric
 
     print("\n INFO: metrics saved")
 
-def save_train_split(train_loader):
+def save_split(loader, split_name):
     # create a folder saving the images used for training
-    train_images_path = os.path.join(PARENT_DIR, "dataset", "train_split")
-    # os.makedirs(train_images_path, exist_ok=True)
+    images_path = os.path.join(PARENT_DIR, "dataset", split_name)
+    os.makedirs(images_path, exist_ok=True)
 
-    # # create a folder for hate and non-hate images
-    # hate_path = os.path.join(train_images_path, "hate")
-    # non_hate_path = os.path.join(train_images_path, "non_hate")
-    # os.makedirs(hate_path, exist_ok=True)
-    # os.makedirs(non_hate_path, exist_ok=True)
+    # create a folder for hate and non-hate images
+    hate_path = os.path.join(images_path, "hate")
+    non_hate_path = os.path.join(images_path, "non_hate")
+    os.makedirs(hate_path, exist_ok=True)
+    os.makedirs(non_hate_path, exist_ok=True)
 
-    # # clear the folders if they are not empty
-    # for file in os.listdir(hate_path):
-    #     os.remove(os.path.join(hate_path, file))
-    # for file in os.listdir(non_hate_path):
-    #     os.remove(os.path.join(non_hate_path, file))
+    # clear the folders if they are not empty
+    for file in os.listdir(hate_path):
+        os.remove(os.path.join(hate_path, file))
+    for file in os.listdir(non_hate_path):
+        os.remove(os.path.join(non_hate_path, file))
 
-    # # copy the images to the folder
-    # # for batch in train_loader:
-    # for j, batch in enumerate(train_loader):
-    #     print(f"Batch {j}/{len(train_loader)}")
-    #     _, _, img, labels = batch
-    #     for i in range(len(img)):
-    #         if labels[i] == 1:
-    #             img_path = os.path.join(hate_path, f"{j}_{i}.jpg")
-    #         else:
-    #             img_path = os.path.join(non_hate_path, f"{j}_{i}.jpg")
-    #         img_pil = transforms.ToPILImage()(img[i])
-    #         img_pil.save(img_path)
+    # copy the images to the folder
+    # for batch in train_loader:
+    for j, batch in enumerate(loader):
+        print(f"Batch {j}/{len(loader)}")
+        _, _, img, labels = batch
+        for i in range(len(img)):
+            if labels[i] == 1:
+                img_path = os.path.join(hate_path, f"{j}_{i}.jpg")
+            else:
+                img_path = os.path.join(non_hate_path, f"{j}_{i}.jpg")
+            img_pil = transforms.ToPILImage()(img[i])
+            img_pil.save(img_path)
 
-    # print("\nINFO: train split saved")
+    print(f"\nINFO: {split_name} split saved")
 
-    return train_images_path
+    return os.path.join(PARENT_DIR, "dataset")
 
 
 
@@ -320,7 +320,8 @@ def run_model(model_name="CustomBert"):
         model = ResNet50()
     elif model_name == "Yolov8":
         model = YOLO('yolov8-cls.yaml')
-        train_split_path = save_train_split(train_loader)
+        save_split(train_loader, "train")
+        dt_path = save_split(test_loader, "test")
 
     # print(f"\nINFO: model used: {model.name}")
 
@@ -333,7 +334,7 @@ def run_model(model_name="CustomBert"):
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training start time: {current_time}\n")
     if model_name == "Yolov8":
-        results = model.train(data = train_split_path, epochs = 15, imgsz = 64)   ## Train the Model
+        results = model.train(data = dt_path, epochs = 15, imgsz = 64)   ## Train the Model
         print(f"\nINFO: Yolov8 training results: {results}")
         return
     else:
