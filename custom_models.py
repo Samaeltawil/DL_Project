@@ -43,9 +43,9 @@ class ResNet_Bert(nn.Module):
 
         self.dropout = nn.Dropout(p=0.5)
         self.fc1 = nn.Linear(1024, 512)
-        self.bn1 = nn.BatchNorm1d(1024)
+        self.bn1 = nn.BatchNorm1d(512)
         self.fc2 = nn.Linear(512, num_labels)
-        self.bn2 = nn.BatchNorm1d(512)
+        self.bn2 = nn.BatchNorm1d(1)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, input_ids, attention_mask, input_tensor_image):
@@ -65,6 +65,36 @@ class ResNet_Bert(nn.Module):
         logits = self.fc1(logits)
         logits = self.bn1(logits)
         logits = F.relu(logits)
+        logits = self.fc2(logits)
+        logits = self.bn2(logits)
+        logits = self.sigmoid(logits)
+
+        return logits
+
+class ResNet50(nn.Module):
+    def __init__(self, resnet_model='resnet50', bert_model='bert-base-uncased', num_labels=1):
+        super(ResNet50, self).__init__()
+        self.resnet = torch.hub.load('pytorch/vision:v0.10.0', resnet_model, pretrained=True)
+        self.name ="ResNet50"
+        self.res_num_features = 1000
+
+        # Freeze ResNet layers
+        for param in self.resnet.parameters():
+            param.requires_grad = False
+
+        self.resnet_fc = nn.Linear(self.res_num_features, 512)
+
+        self.dropout = nn.Dropout(p=0.5)
+        self.fc2 = nn.Linear(512, num_labels)
+        self.bn2 = nn.BatchNorm1d(1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, input_ids, attention_mask, input_tensor_image):
+        with torch.no_grad():
+            res_outputs = self.resnet(input_tensor_image)
+        res_outputs = self.resnet_fc(res_outputs)
+        res_outputs = F.relu(res_outputs)
+        res_outputs = self.dropout(res_outputs)
         logits = self.fc2(logits)
         logits = self.bn2(logits)
         logits = self.sigmoid(logits)
