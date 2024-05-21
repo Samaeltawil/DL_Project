@@ -16,13 +16,13 @@ from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import numpy as np
 
-MODEL_NAME = "CustomBert"
+MODEL_NAME = "ResNet50"
 
 PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(PARENT_DIR)
 
 from custom_dataset import CustomDataset
-from custom_models import CustomBert, ResNet_Bert
+from custom_models import CustomBert, ResNet_Bert, ResNet50
 
 def update_metrics_log(metrics_names, metrics_log, new_metrics_dict):
         for i in range(len(metrics_names)):
@@ -102,6 +102,8 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
                 outputs = model(text, mask)
             elif model.name == "ResNet_Bert":
                 outputs = model(text, mask, img)
+            elif model.name == "ResNet50":
+                outputs = model(img)
             loss = criterion(outputs, labels.float())
             loss.backward()
             optimizer.step()
@@ -193,12 +195,12 @@ def run_model(model_name="CustomBert"):
 
     # Define hyperparameters -------------------------------------------------------
 
-    batch_size = 20
+    batch_size = 32
     
     # create the splits from ratio
-    train_split = 0.85
-    test_split = 0.05
-    val_split = 0.1
+    train_split = 0.93
+    test_split = 0.04
+    val_split = 0.03
     
     # ------------------------------------------------------------------------------
 
@@ -265,7 +267,6 @@ def run_model(model_name="CustomBert"):
             print(f"Error with idx: {element[0]}")
             print(f"Label: {element[1]}")
 
-    # weights = [class_weights[int(dataset[idx]['label'])] for idx in train_indices]
     sampler_test = WeightedRandomSampler(weights, len(weights))
 
     # Create data loader for balanced training set
@@ -281,6 +282,8 @@ def run_model(model_name="CustomBert"):
         model = CustomBert()
     elif model_name == "ResNet_Bert":
         model = ResNet_Bert()
+    elif model_name == "ResNet50":
+        model = ResNet50()
 
     print(f"\nINFO: model used: {model.name}")
 
@@ -292,7 +295,7 @@ def run_model(model_name="CustomBert"):
     print("\nINFO: training start")
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training start time: {current_time}\n")
-    train_loss_log, train_metrics_log, eval_metrics_log, all_labels, all_outputs = train_model(model, train_loader, test_loader, metrics, num_epochs=10, learning_rate=0.0005)
+    train_loss_log, train_metrics_log, eval_metrics_log, all_labels, all_outputs = train_model(model, train_loader, test_loader, metrics, num_epochs=2, learning_rate=0.0005)
     
     print("\n===============================================================================================")
     current_time = time.strftime("%H:%M:%S", time.localtime())
