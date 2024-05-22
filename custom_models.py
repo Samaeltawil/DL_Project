@@ -89,7 +89,7 @@ class ResNet50(nn.Module):
         self.bn2 = nn.BatchNorm1d(1)
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self input_tensor_image):
+    def forward(self, input_tensor_image):
         with torch.no_grad():
             res_outputs = self.resnet(input_tensor_image)
         res_outputs = self.resnet_fc(res_outputs)

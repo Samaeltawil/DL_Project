@@ -10,14 +10,14 @@ from torch.utils.data.sampler import WeightedRandomSampler
 import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
-# from tqdm import tqdm
-# from sklearn.metrics import f1_score, accuracy_score 
-# from sklearn.metrics import roc_curve, auc
-# from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from tqdm import tqdm
+from sklearn.metrics import f1_score, accuracy_score 
+from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import numpy as np
 from ultralytics import YOLO
 
-MODEL_NAME = "Yolov8"
+MODEL_NAME = "CustomBert"
 
 PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(PARENT_DIR)
@@ -83,9 +83,6 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
     criterion = nn.BCELoss() # Binary cross-entropy loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    all_labels = []
-    all_outputs = []
-
     for epoch in range(num_epochs):
         print("\n----------------------------------------------------------------------------")
         current_time = time.strftime("%H:%M:%S", time.localtime())
@@ -129,6 +126,9 @@ def train_model(model, train_loader, test_loader, metrics, num_epochs=1, learnin
         model.eval()
         epoch_metrics_eval = dict(zip(metrics.keys(), torch.zeros(len(metrics))))
         epoch_loss = 0.0
+
+        all_labels = []
+        all_outputs = []
 
         with torch.no_grad():
             for batch in test_loader:
@@ -212,7 +212,7 @@ def save_split(loader, split_name):
     # copy the images to the folder
     # for batch in train_loader:
     for j, batch in enumerate(loader):
-        print(f"Batch {j}/{len(loader)}")
+        # print(f"Batch {j}/{len(loader)}")
         _, _, img, labels = batch
         for i in range(len(img)):
             if labels[i] == 1:
@@ -334,11 +334,11 @@ def run_model(model_name="CustomBert"):
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training start time: {current_time}\n")
     if model_name == "Yolov8":
-        results = model.train(data = dt_path, epochs = 15, imgsz = 64)   ## Train the Model
+        results = model.train(data = dt_path, epochs = 15, batch=32, imgsz = 64)   ## Train the Model
         print(f"\nINFO: Yolov8 training results: {results}")
         return
     else:
-        train_loss_log, train_metrics_log, eval_metrics_log, all_labels, all_outputs = train_model(model, train_loader, test_loader, metrics, num_epochs=2, learning_rate=0.0005)
+        train_loss_log, train_metrics_log, eval_metrics_log, all_labels, all_outputs = train_model(model, train_loader, test_loader, metrics, num_epochs=15, learning_rate=0.0005)
     
     print("\n===============================================================================================")
     current_time = time.strftime("%H:%M:%S", time.localtime())
