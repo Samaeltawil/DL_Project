@@ -226,14 +226,11 @@ def save_split(loader, split_name):
 
     return os.path.join(PARENT_DIR, "dataset")
 
-
-
 # ==================================================================================================================================
 
 def run_model(model_name="CustomBert"):
 
     # Define hyperparameters -------------------------------------------------------
-
     batch_size = 32
     
     # create the splits from ratio
@@ -271,7 +268,7 @@ def run_model(model_name="CustomBert"):
 
     # Create a WeightedRandomSampler to balance the training dataset
     train_hate_ratio = sum(train_set.labels)/len(train_set.labels)
-    class_weights = [train_hate_ratio, 1-train_hate_ratio]  # Inverse of number of samples per class
+    class_weights = [1/(1-train_hate_ratio), 1/train_hate_ratio]  # Inverse of number of samples per class
 
     weights = []
     for element in zip(train_set.ids, train_set.labels):
@@ -290,7 +287,7 @@ def run_model(model_name="CustomBert"):
 
     # Create a WeightedRandomSampler to balance the test dataset
     test_hate_ratio = sum(test_set.labels)/len(test_set.labels)
-    class_weights = [test_hate_ratio, 1-test_hate_ratio]  # Inverse of number of samples per class
+    class_weights = [1/(1-train_hate_ratio), 1/train_hate_ratio]  # Inverse of number of samples per class
 
     weights = []
     for element in zip(test_set.ids, test_set.labels):
@@ -344,6 +341,9 @@ def run_model(model_name="CustomBert"):
     current_time = time.strftime("%H:%M:%S", time.localtime())
     print(f"training end: {current_time}")
     print("===============================================================================================")
+
+    model_dict_path = os.path.join(PARENT_DIR, "model_save", "Custom_model_dict.pt")
+    torch.save(model.state_dict(), PATH)
 
     # Saving all labels, all outputs
     labels_outputs_path = os.path.join(PARENT_DIR, "results", f"labels_outputs_{model.name}_" + time.strftime("%y%m%d_%H%M") + ".csv")
